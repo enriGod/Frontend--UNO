@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO Master · Multijugador en tiempo real</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23d9202a'/%3E%3Ctext x='16' y='22' font-size='15' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EU%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <!-- Indicador de conexión (siempre visible) -->
+  <div id="connBadge" class="conn-badge conn-connecting" title="Estado de la conexión">
+    <span class="conn-dot"></span>
+    <span id="connText">Conectando…</span>
+  </div>
+
+  <!-- ============ PANTALLA 1: LOBBY ============ -->
+  <section id="lobby" class="screen screen--active">
+    <div class="lobby-card">
+      <h1 class="logo"><span class="logo-badge">UNO</span> Master</h1>
+      <p class="tagline">Multijugador en tiempo real · 4 jugadores</p>
+
+      <div id="joinForm" class="join-form">
+        <label for="nickname" class="field-label">Tu nombre de jugador</label>
+        <input id="nickname" class="text-input" type="text" maxlength="16"
+               placeholder="Ej: Enrique" autocomplete="off" />
+        <button id="joinBtn" class="btn btn--primary btn--block">Entrar al Lobby</button>
+        <p class="hint">Se necesitan <strong>4 jugadores</strong>. Abre 3 pestañas más
+          (en incógnito o distintos navegadores) con nombres diferentes para probar solo.</p>
+      </div>
+
+      <div id="waitingRoom" class="waiting-room hidden">
+        <h2 class="waiting-title">Sala de espera</h2>
+        <p class="waiting-count"><span id="playerCount">0</span> / 4 jugadores conectados</p>
+        <ul id="playerList" class="player-list"></ul>
+        <p class="waiting-status">Esperando a que se complete la sala…</p>
+        <div class="loader"></div>
+      </div>
+    </div>
+    <footer class="lobby-footer">UCAB · Programación Orientada a la Web · Actividad UNO (Sockets)</footer>
+  </section>
+
+  <!-- ============ PANTALLA 2: JUEGO ============ -->
+  <section id="game" class="screen">
+    <!-- Barra superior -->
+    <header class="game-header">
+      <div class="header-left">
+        <span class="logo-badge logo-badge--sm">UNO</span>
+        <span class="header-me">Tú: <strong id="meName">—</strong></span>
+      </div>
+      <div class="header-right">
+        <span class="dir-pill" id="directionPill">Sentido: —</span>
+      </div>
+    </header>
+
+    <!-- Mesa -->
+    <main class="table">
+      <!-- Asiento oponente superior -->
+      <div class="seat seat--top">
+        <div class="seat-avatar" id="seat-top">?</div>
+        <div class="seat-name" id="seat-top-name">Oponente</div>
+        <div class="mini-fan"><img src="assets/card_back.png" alt="" /><img src="assets/card_back.png" alt="" /><img src="assets/card_back.png" alt="" /></div>
+      </div>
+
+      <!-- Asiento oponente izquierdo -->
+      <div class="seat seat--left">
+        <div class="seat-avatar" id="seat-left">?</div>
+        <div class="seat-name" id="seat-left-name">Oponente</div>
+        <div class="mini-fan mini-fan--v"><img src="assets/card_back.png" alt="" /><img src="assets/card_back.png" alt="" /></div>
+      </div>
+
+      <!-- Centro: mazo + descarte + turno -->
+      <div class="table-center">
+        <div class="turn-banner" id="turnBanner">Esperando…</div>
+
+        <div class="piles">
+          <button class="deck" id="deckBtn" title="Robar carta">
+            <img src="assets/card_back.png" alt="Mazo" />
+            <span class="deck-label">Robar</span>
+          </button>
+
+          <div class="discard" id="discardPile">
+            <img id="topCardImg" src="assets/card_back.png" alt="Carta en mesa" />
+          </div>
+        </div>
+
+        <div class="pause-hint hidden" id="pauseHint">⏸ Juego en pausa… esperando al jugador afectado</div>
+      </div>
+
+      <!-- Asiento oponente derecho -->
+      <div class="seat seat--right">
+        <div class="seat-avatar" id="seat-right">?</div>
+        <div class="seat-name" id="seat-right-name">Oponente</div>
+        <div class="mini-fan mini-fan--v"><img src="assets/card_back.png" alt="" /><img src="assets/card_back.png" alt="" /></div>
+      </div>
+    </main>
+
+    <!-- Log de acciones -->
+    <div class="log-bar"><span class="log-icon">📢</span><span id="logText">¡Que empiece el juego!</span></div>
+
+    <!-- Zona del jugador -->
+    <section class="my-area">
+      <div class="my-bar">
+        <div class="my-info">
+          <span class="my-cards"><strong id="handCount">0</strong> cartas</span>
+          <span class="badge badge--safe hidden" id="unoBadge">🛡️ Dijiste ¡UNO!</span>
+        </div>
+        <div class="botonera hidden" id="botonera">
+          <button class="btn btn--uno" id="unoBtn">¡UNO!</button>
+          <button class="btn btn--corte" id="corteBtn">¡CORTE! ✂️</button>
+        </div>
+      </div>
+      <div class="hand" id="hand"></div>
+    </section>
+  </section>
+
+  <!-- ============ MODAL: ELEGIR COLOR (Comodín) ============ -->
+  <div id="colorModal" class="modal-overlay hidden">
+    <div class="modal color-modal">
+      <h2>Elige un color</h2>
+      <div class="color-grid">
+        <button class="color-swatch" data-color="Rojo" style="--c:#d9202a">Rojo</button>
+        <button class="color-swatch" data-color="Amarillo" style="--c:#f0b400">Amarillo</button>
+        <button class="color-swatch" data-color="Verde" style="--c:#1f9d3b">Verde</button>
+        <button class="color-swatch" data-color="Azul" style="--c:#1f7fd1">Azul</button>
+      </div>
+      <button class="btn btn--ghost" id="colorCancel">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: POPUP BLOQUEANTE (penalización) ============ -->
+  <div id="popupModal" class="modal-overlay hidden">
+    <div class="modal popup-modal">
+      <div class="popup-icon">⚠️</div>
+      <p id="popupText">—</p>
+      <button class="btn btn--primary btn--block" id="popupOk">Aceptar y continuar</button>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FIN DE JUEGO ============ -->
+  <div id="overModal" class="modal-overlay hidden">
+    <div class="modal over-modal">
+      <div class="over-icon">🏆</div>
+      <p id="overText">—</p>
+      <button class="btn btn--primary btn--block" id="overBtn">Volver al Lobby</button>
+    </div>
+  </div>
+
+  <!-- Toasts (errores no bloqueantes) -->
+  <div id="toasts" class="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
