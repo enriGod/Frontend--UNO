@@ -1,1 +1,9 @@
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+app.use(cors({
+  origin: 'https://backend-uno-cq4g.onrender.com' // Replace with your exact GitHub Pages URL
+}));
+
 actividaduno.com
