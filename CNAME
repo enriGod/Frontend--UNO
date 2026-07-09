@@ -3,5 +3,5 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: 'https://backend-uno-cq4g.onrender.com' // Replace with your exact GitHub Pages URL
+  origin: 'https://github.com/enriGod/Frontend--UNO' // Replace with your exact GitHub Pages URL
 }));
